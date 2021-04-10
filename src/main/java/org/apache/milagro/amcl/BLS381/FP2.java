@@ -23,7 +23,10 @@ under the License.
 
 package org.apache.milagro.amcl.BLS381;
 
-public final class FP2 {
+public final class FP2 
+{
+	static final FP2 ONE = new FP2(1);
+	
 	private final FP a;
 	private final FP b;
 
@@ -54,9 +57,9 @@ public final class FP2 {
 	}
 
 /* test this=1 ? */
-	public boolean isunity() {
-		FP one=new FP(1);
-		return (a.equals(one) && b.iszilch());
+	public boolean isunity() 
+	{
+		return (a.equals(FP.ONE) && b.iszilch());
 	}
 
 /* test this=x */
@@ -65,6 +68,17 @@ public final class FP2 {
 	}
 
 /* Constructors */
+	public static FP2 createFast()
+	{
+		return new FP2();
+	}
+	
+	private FP2()
+	{
+		a=FP.createFast();
+		b=FP.createFast();
+	}
+
 	public FP2(int c)
 	{
 		a=new FP(c);
@@ -100,7 +114,8 @@ public final class FP2 {
 		a=new FP(c);
 		b=new FP(0);
 	}
-/*
+
+	/*
 	public BIG geta()
 	{
 		return a.tobig();
@@ -143,11 +158,11 @@ public final class FP2 {
 	public void neg()
 	{
 		FP m=new FP(a);
-		FP t=new FP(0);
+		FP t;
 
 		m.add(b);
 		m.neg();
-		t.copy(m); t.add(b);
+		t=new FP(m); t.add(b);
 		b.copy(m);
 		b.add(a);
 		a.copy(t);
@@ -227,11 +242,11 @@ public final class FP2 {
 			if (b.XES>1) b.reduce();		
 		}
 
-		DBIG pR=new DBIG(0);
+		DBIG pR=DBIG.createFast();
 		BIG C=new BIG(a.x);
 		BIG D=new BIG(y.a.x);
 
-		pR.ucopy(new BIG(ROM.Modulus));
+		pR.ucopy(BIG.BIGROMMOD);
 
 		DBIG A=BIG.mul(a.x,y.a.x);
 		DBIG B=BIG.mul(b.x,y.b.x);

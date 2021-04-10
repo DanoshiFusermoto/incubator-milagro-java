@@ -86,7 +86,7 @@ public final class ECP2 {
 /* Constant time select from pre-computed table */
 	public void select(ECP2 W[],int b)
 	{
-		ECP2 MP=new ECP2(); 
+		ECP2 MP; 
 		int m=b>>31;
 		int babs=(b^m)-m;
 
@@ -101,7 +101,7 @@ public final class ECP2 {
 		cmove(W[6],teq(babs,6));
 		cmove(W[7],teq(babs,7));
  
-		MP.copy(this);
+		MP=new ECP2(this);
 		MP.neg();
 		cmove(MP,(int)(m&1));
 	}
@@ -132,10 +132,10 @@ public final class ECP2 {
 		return;
 	}
 /* set to Affine - (x,y,z) to (x,y) */
-	public void affine() {
+	public void affine() 
+	{
 		if (is_infinity()) return;
-		FP2 one=new FP2(1);
-		if (z.equals(one))
+		if (z.equals(FP2.ONE))
 		{
 			x.reduce();
 			y.reduce();
@@ -145,7 +145,7 @@ public final class ECP2 {
 
 		x.mul(z); x.reduce();               // *****
 		y.mul(z); y.reduce();
-		z.copy(one);
+		z.copy(FP2.ONE);
 	}
 /* extract affine x as FP2 */
 	public FP2 getX()
@@ -267,15 +267,19 @@ public final class ECP2 {
 /* construct this from x - but set to O if not on curve */
 	public ECP2(FP2 ix) {
 		x=new FP2(ix);
-		y=new FP2(1);
 		z=new FP2(1);
 		FP2 rhs=RHS(x);
 		if (rhs.sqrt()) 
 		{
-			y.copy(rhs);
+			y = new FP2(rhs);
 			//INF=false;
 		}
-		else {/*x.zero();INF=true;*/ inf();}
+		else 
+		{
+			/*x.zero();INF=true;*/
+			y=new FP2(1);
+			inf();
+		}
 	}
 
 /* this+=this */
@@ -444,11 +448,11 @@ public final class ECP2 {
 	{
 /* fixed size windows */
 		int i,b,nb,m,s,ns;
-		BIG mt=new BIG();
-		BIG t=new BIG();
-		ECP2 P=new ECP2();
-		ECP2 Q=new ECP2();
-		ECP2 C=new ECP2();
+		BIG mt;
+		BIG t;
+		ECP2 P;
+		ECP2 Q;
+		ECP2 C;
 		ECP2[] W=new ECP2[8];
 		byte[] w=new byte[1+(BIG.NLEN*BIG.BASEBITS+3)/4];
 
@@ -457,25 +461,24 @@ public final class ECP2 {
 		//affine();
 
 /* precompute table */
-		Q.copy(this);
+		Q=new ECP2(this);
 		Q.dbl();
-		W[0]=new ECP2();
-		W[0].copy(this);
+		W[0]=new ECP2(this);
 
 		for (i=1;i<8;i++)
 		{
-			W[i]=new ECP2();
-			W[i].copy(W[i-1]);
+			W[i]=new ECP2(W[i-1]);
 			W[i].add(Q);
 		}
 
 /* make exponent odd - add 2P if even, P if odd */
-		t.copy(e);
+		t=new BIG(e);
 		s=t.parity();
-		t.inc(1); t.norm(); ns=t.parity(); mt.copy(t); mt.inc(1); mt.norm();
+		t.inc(1); t.norm(); ns=t.parity(); 
+		mt=new BIG(t); mt.inc(1); mt.norm();
 		t.cmove(mt,s);
 		Q.cmove(this,ns);
-		C.copy(Q);
+		C=new ECP2(Q);
 
 		nb=1+(t.nbits()+3)/4;
 /* convert exponent to signed 4-bit window */
@@ -487,7 +490,7 @@ public final class ECP2 {
 		}
 		w[nb]=(byte)t.lastbits(5);
 	
-		P.copy(W[(w[nb]-1)/2]);  
+		P=new ECP2(W[(w[nb]-1)/2]);  
 		for (i=nb-1;i>=0;i--)
 		{
 			Q.select(W,w[i]);
@@ -514,7 +517,7 @@ public final class ECP2 {
 		ECP2 P=new ECP2();
 		ECP2[] T=new ECP2[8];
 
-		BIG mt=new BIG();
+		BIG mt;
 		BIG[] t=new BIG[4];
 
 		byte[] w=new byte[BIG.NLEN*BIG.BASEBITS+1];
@@ -527,14 +530,14 @@ public final class ECP2 {
 			//Q[i].affine();
 		}
 
-        T[0] = new ECP2(); T[0].copy(Q[0]);  // Q[0]
-        T[1] = new ECP2(); T[1].copy(T[0]); T[1].add(Q[1]);  // Q[0]+Q[1]
-        T[2] = new ECP2(); T[2].copy(T[0]); T[2].add(Q[2]);  // Q[0]+Q[2]
-        T[3] = new ECP2(); T[3].copy(T[1]); T[3].add(Q[2]);  // Q[0]+Q[1]+Q[2]
-        T[4] = new ECP2(); T[4].copy(T[0]); T[4].add(Q[3]);  // Q[0]+Q[3]
-        T[5] = new ECP2(); T[5].copy(T[1]); T[5].add(Q[3]);  // Q[0]+Q[1]+Q[3]
-        T[6] = new ECP2(); T[6].copy(T[2]); T[6].add(Q[3]);  // Q[0]+Q[2]+Q[3]
-        T[7] = new ECP2(); T[7].copy(T[3]); T[7].add(Q[3]);  // Q[0]+Q[1]+Q[2]+Q[3]
+        T[0] = new ECP2(Q[0]);  // Q[0]
+        T[1] = new ECP2(T[0]); T[1].add(Q[1]);  // Q[0]+Q[1]
+        T[2] = new ECP2(T[0]); T[2].add(Q[2]);  // Q[0]+Q[2]
+        T[3] = new ECP2(T[1]); T[3].add(Q[2]);  // Q[0]+Q[1]+Q[2]
+        T[4] = new ECP2(T[0]); T[4].add(Q[3]);  // Q[0]+Q[3]
+        T[5] = new ECP2(T[1]); T[5].add(Q[3]);  // Q[0]+Q[1]+Q[3]
+        T[6] = new ECP2(T[2]); T[6].add(Q[3]);  // Q[0]+Q[2]+Q[3]
+        T[7] = new ECP2(T[3]); T[7].add(Q[3]);  // Q[0]+Q[1]+Q[2]+Q[3]
 
     // Make it odd
         pb=1-t[0].parity();
@@ -542,7 +545,7 @@ public final class ECP2 {
         t[0].norm();
 
     // Number of bits
-        mt.zero();
+        mt=new BIG(0);
         for (i=0;i<4;i++) {
             mt.or(t[i]); 
         }
@@ -674,7 +677,7 @@ public final class ECP2 {
 /* needed for SOK */
 	public static ECP2 mapit(byte[] h)
 	{
-		BIG q=new BIG(ROM.Modulus);
+		BIG q=BIG.BIGROMMOD;
 		BIG x=BIG.fromBytes(h);
 		BIG one=new BIG(1);
 		FP2 X;
@@ -706,14 +709,14 @@ public final class ECP2 {
 		{
 			ECP2 T,K;
 
-			T=new ECP2(); T.copy(Q);
+			T=new ECP2(Q);
 			T=T.mul(x); 
 			
 			if (ECP.SIGN_OF_X==ECP.NEGATIVEX)
 			{
 				T.neg();
 			}	
-			K=new ECP2(); K.copy(T);
+			K=new ECP2(T);
 			K.dbl(); K.add(T); //K.affine();
 
 			K.frob(X);

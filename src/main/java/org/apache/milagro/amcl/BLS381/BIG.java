@@ -38,27 +38,33 @@ public class BIG {
 	public static final int NEXCESS = ((int)1<<(CHUNK-BASEBITS-1));
 	public static final int BIGBITS=(MODBYTES*8);
 
-
+	static final BIG BIGROMMOD = new BIG(ROM.Modulus);
+	static final BIG ZERO = new BIG(0);
+	static final BIG ONE = new BIG(1);
 
 	protected long[] w=new long[NLEN];
 /* Constructors */
-	public BIG()
+	public static BIG createFast()
 	{
-		for (int i=0;i<NLEN;i++)
-			w[i]=0;
+		return new BIG();
 	}
+	
+	private BIG()
+	{ }
 
 	public BIG(int x)
 	{
 		w[0]=x;
-		for (int i=1;i<NLEN;i++)
-			w[i]=0;
+		w[1]=0; w[2]=0; w[3]=0;
+		w[4]=0; w[5]=0; w[6]=0;
 	}
 
 	public BIG(BIG x)
 	{
-		for (int i=0;i<NLEN;i++)
-			w[i]=x.w[i];
+		w[0]=x.w[0]; w[1]=x.w[1];
+		w[2]=x.w[2]; w[3]=x.w[3];
+		w[4]=x.w[4]; w[5]=x.w[5];
+		w[6]=x.w[6];
 	}
 
 	public BIG(DBIG x)
@@ -69,8 +75,10 @@ public class BIG {
 
 	public BIG(long[] x)
 	{
-			for (int i=0;i<NLEN;i++)
-				w[i]=x[i];
+		w[0]=x[0]; w[1]=x[1];
+		w[2]=x[2]; w[3]=x[3];
+		w[4]=x[4]; w[5]=x[5];
+		w[6]=x[6];
 	}
 
 	public long get(int i)
@@ -197,39 +205,53 @@ public class BIG {
 		tb[1]=bot;
 		return tb;
 	}
+	
+	public static void muladd(long a,long b,long c,long r, long[] cr)
+	{
+		long x0,x1,y0,y1;
+		x0=a&HMASK;
+		x1=(a>>HBITS);
+		y0=b&HMASK;
+		y1=(b>>HBITS);
+		long bot=x0*y0;
+		long top=x1*y1;
+		long mid=x0*y1+x1*y0;
+		x0=mid&HMASK;
+		x1=(mid>>HBITS);
+		bot+=x0<<HBITS; bot+= (c+r);
+		cr[0]=top+x1+(bot>>BASEBITS);
+		cr[1]=(bot&BMASK);
+	}
 
 /* this*=x, where x is >NEXCESS */
 	public long pmul(int c)
 	{
-		long ak,carry=0;
-		long[] cr=new long[2];
+		long ak;
+		long[] cr=new long[] {0, 0};
 
 		for (int i=0;i<NLEN;i++)
 		{
 			ak=w[i];
 			w[i]=0;
 
-			cr=muladd(ak,(long)c,carry,w[i]);
-			carry=cr[0];
+			muladd(ak,(long)c,cr[0],w[i],cr);
 			w[i]=cr[1];
 
 		}
-		return carry;
+		return cr[0];
 	}
 
 /* return this*c and catch overflow in DBIG */
 	public DBIG pxmul(int c)
 	{
 		DBIG m=new DBIG(0);	
-		long[] cr=new long[2];
-		long carry=0;
+		long[] cr=new long[] {0, 0};
 		for (int j=0;j<NLEN;j++)
 		{
-			cr=muladd(w[j],(long)c,carry,m.w[j]);
-			carry=cr[0];
+			muladd(w[j],(long)c,cr[0],m.w[j],cr);
 			m.w[j]=cr[1];
 		}
-		m.w[NLEN]=carry;		
+		m.w[NLEN]=cr[0];		
 		return m;
 	}
 
@@ -251,17 +273,15 @@ public class BIG {
 /* return a*b where result fits in a BIG */
 	public static BIG smul(BIG a,BIG b)
 	{
-		long carry;
-		long[] cr=new long[2];
-		BIG c=new BIG(0);
+		long[] cr=new long[] {0, 0};
+		BIG c=BIG.createFast();
 		for (int i=0;i<NLEN;i++)
 		{
-			carry=0;
+			cr[0]=0;
 			for (int j=0;j<NLEN;j++)
 				if (i+j<NLEN)
 				{
-					cr=muladd(a.w[i],b.w[j],carry,c.w[i+j]);
-					carry=cr[0];
+					muladd(a.w[i],b.w[j],cr[0],c.w[i+j],cr);
 					c.w[i+j]=cr[1];
 				}
 		}
@@ -272,20 +292,21 @@ public class BIG {
 /* Inputs must be normed */
 	public static DBIG mul(BIG a,BIG b)
 	{
-		DBIG c=new DBIG(0);
-		long carry;
-		long[] cr=new long[2];
+		DBIG c=DBIG.createFast();
+		int o = 0;
+		long[] cr=new long[] {0, 0};
 
 		for (int i=0;i<NLEN;i++)
 		{
-			carry=0;
+			cr[0]=0;
+			o = i;
 			for (int j=0;j<NLEN;j++)
 			{
-				cr=muladd(a.w[i],b.w[j],carry,c.w[i+j]);
-				carry=cr[0];
-				c.w[i+j]=cr[1];
+				muladd(a.w[i],b.w[j],cr[0],c.w[o],cr);
+				c.w[o]=cr[1];
+				o++;
 			}
-			c.w[NLEN+i]=carry;
+			c.w[NLEN+i]=cr[0];
 		}
 
 		return c;
@@ -295,27 +316,27 @@ public class BIG {
 /* Input must be normed */
 	public static DBIG sqr(BIG a)
 	{
-		DBIG c=new DBIG(0);
-		long carry;
-		long[] cr=new long[2];
+		DBIG c=DBIG.createFast();
+		long[] cr=new long[] {0, 0};
 
 		for (int i=0;i<NLEN;i++)
 		{
-			carry=0;
+			cr[0]=0;
 			for (int j=i+1;j<NLEN;j++)
 			{
-				cr=muladd(2*a.w[i],a.w[j],carry,c.w[i+j]);
-				carry=cr[0];
+				muladd(2*a.w[i],a.w[j],cr[0],c.w[i+j],cr);
 				c.w[i+j]=cr[1];
 			}
-			c.w[NLEN+i]=carry;
+			c.w[NLEN+i]=cr[0];
 		}
-
+		
+		int i2 = 0;
 		for (int i=0;i<NLEN;i++)
 		{
-			cr=muladd(a.w[i],a.w[i],0,c.w[2*i]);
-			c.w[2*i+1]+=cr[0];
-			c.w[2*i]=cr[1];
+			muladd(a.w[i],a.w[i],0,c.w[i2],cr);
+			c.w[i2+1]+=cr[0];
+			c.w[i2]=cr[1];
+			i2+=2;
 		}
 		c.norm(); 
 		return c;
@@ -324,28 +345,35 @@ public class BIG {
 	static BIG monty(BIG md,long MC,DBIG d)
 	{
 		BIG b;
-		long m,carry;
-		long[] cr=new long[2];
+		long m;
+		long[] cr=new long[]{0,0};
 		for (int i=0;i<NLEN;i++) 
 		{
-			if (MC==-1) m=(-d.w[i])&BMASK;
-			else
-			{
-				if (MC==1) m=d.w[i];
-				else m=(MC*d.w[i])&BMASK;
-			}
+			// These conditions rarely happen, not worth the if expense
+/*			if (MC==-1) 
+				m=(-d.w[i])&BMASK;
+			else if (MC==1)
+				m=d.w[i];
+			else if (MC==0)
+				m=0;
+			else 
+				m=(MC*d.w[i])&BMASK;*/
+			
+				
+			m=(MC*d.w[i])&BMASK;
 
-			carry=0;
+			cr[0]=0;
+			int o = i;
 			for (int j=0;j<NLEN;j++)
 			{
-				cr=muladd(m,md.w[j],carry,d.w[i+j]);
-				carry=cr[0];
-				d.w[i+j]=cr[1];
+				muladd(m,md.w[j],cr[0],d.w[o],cr);
+				d.w[o]=cr[1];
+				o++;
 			}
-			d.w[NLEN+i]+=carry;
+			d.w[NLEN+i]+=cr[0];
 		}
 
-		b=new BIG(0);
+		b=BIG.createFast();
 		for (int i=0;i<NLEN;i++ )
 			b.w[i]=d.w[NLEN+i];
 		b.norm();
@@ -430,8 +458,10 @@ public class BIG {
 /* Copy from another BIG */
 	public void copy(BIG x)
 	{
-		for (int i=0;i<NLEN;i++)
-			w[i]=x.w[i];
+		w[0]=x.w[0]; w[1]=x.w[1];
+		w[2]=x.w[2]; w[3]=x.w[3];
+		w[4]=x.w[4]; w[5]=x.w[5];
+		w[6]=x.w[6];
 	}
 
 	public void copy(DBIG x)
@@ -466,7 +496,7 @@ public class BIG {
 
 /* return this+x */
 	public BIG plus(BIG x) {
-		BIG s=new BIG(0);
+		BIG s=BIG.createFast();
 		for (int i=0;i<NLEN;i++)
 			s.w[i]=w[i]+x.w[i];
 		return s;
@@ -499,7 +529,7 @@ public class BIG {
 
 /* return this.x */
 	public BIG minus(BIG x) {
-		BIG d=new BIG(0);
+		BIG d=BIG.createFast();
 		for (int i=0;i<NLEN;i++)
 			d.w[i]=w[i]-x.w[i];
 		return d;
@@ -620,8 +650,8 @@ public class BIG {
 	{
 		int i;
 		BIG U=new BIG(0);
-		BIG b=new BIG(0);
-		BIG c=new BIG(0);
+		BIG b=BIG.createFast();
+		BIG c=BIG.createFast();
 
 		U.inc(invmod256(lastbits(8)));
 
@@ -654,7 +684,7 @@ public class BIG {
 	public void mod(BIG m1)
 	{
 		int k=0;  
-		BIG r=new BIG(0);
+		BIG r=BIG.createFast();
 		BIG m=new BIG(m1);
 
 		norm();
@@ -685,7 +715,7 @@ public class BIG {
 		BIG e=new BIG(1);
 		BIG m=new BIG(m1);
 		BIG b=new BIG(this);
-		BIG r=new BIG(0);
+		BIG r=BIG.createFast();
 		zero();
 
 		while (comp(b,m)>=0)
@@ -817,20 +847,18 @@ public class BIG {
 	public int jacobi(BIG p)
 	{
 		int n8,k,m=0;
-		BIG t=new BIG(0);
-		BIG x=new BIG(0);
-		BIG n=new BIG(0);
-		BIG zilch=new BIG(0);
-		BIG one=new BIG(1);
-		if (p.parity()==0 || comp(this,zilch)==0 || comp(p,one)<=0) return 0;
+		BIG t=BIG.createFast();
+		BIG x;
+		BIG n;
+		if (p.parity()==0 || comp(this,BIG.ZERO)==0 || comp(p,BIG.ONE)<=0) return 0;
 		norm();
-		x.copy(this);
-		n.copy(p);
+		x=new BIG(this);
+		n=new BIG(p);
 		x.mod(p);
 
-		while (comp(n,one)>0)
+		while (comp(n,BIG.ONE)>0)
 		{
-			if (comp(x,zilch)==0) return 0;
+			if (comp(x,BIG.ZERO)==0) return 0;
 			n8=n.lastbits(3);
 			k=0;
 			while (x.parity()==0)
@@ -859,10 +887,9 @@ public class BIG {
 		BIG v=new BIG(p);
 		BIG x1=new BIG(1);
 		BIG x2=new BIG(0);
-		BIG t=new BIG(0);
-		BIG one=new BIG(1);
+		BIG t=BIG.createFast();
 
-		while (comp(u,one)!=0 && comp(v,one)!=0)
+		while (comp(u,BIG.ONE)!=0 && comp(v,BIG.ONE)!=0)
 		{
 			while (u.parity()==0)
 			{
@@ -911,7 +938,7 @@ public class BIG {
 				x2.norm();
 			}
 		}
-		if (comp(u,one)==0) copy(x1);
+		if (comp(u,BIG.ONE)==0) copy(x1);
 		else copy(x2);
 	}
 }

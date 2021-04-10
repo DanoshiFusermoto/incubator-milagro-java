@@ -37,8 +37,10 @@ public final class FP {
 	public static final long OMASK=(long)(-1)<<(MODBITS%BIG.BASEBITS);
 	public static final int TBITS=MODBITS%BIG.BASEBITS; // Number of active bits in top word 
 	public static final long TMASK=((long)1<<TBITS)-1;
-
-
+	
+	static final FP ZERO = new FP(0);
+	static final FP ONE = new FP(1);
+	
 	public final BIG x;
 	//public BIG p=new BIG(ROM.Modulus);
 	//public BIG r2modp=new BIG(ROM.R2modp);
@@ -49,6 +51,11 @@ public final class FP {
 /* reduce a DBIG to a BIG using the appropriate form of the modulus */
 	public static BIG mod(DBIG d)
 	{
+		if (MODTYPE==NOT_SPECIAL)
+		{
+			return BIG.monty(BIG.BIGROMMOD,ROM.MConst,d);
+		}
+
 		if (MODTYPE==PSEUDO_MERSENNE)
 		{
 			BIG b;		
@@ -71,15 +78,15 @@ public final class FP {
 		if (FP.MODTYPE==MONTGOMERY_FRIENDLY)
 		{
 			BIG b;		
-			long[] cr=new long[2];
+			long[] cr=new long[] {0, 0};
 			for (int i=0;i<BIG.NLEN;i++)
 			{
-				cr=BIG.muladd(d.w[i],ROM.MConst-1,d.w[i],d.w[BIG.NLEN+i-1]);
+				BIG.muladd(d.w[i],ROM.MConst-1,d.w[i],d.w[BIG.NLEN+i-1],cr);
 				d.w[BIG.NLEN+i]+=cr[0];
 				d.w[BIG.NLEN+i-1]=cr[1];
 			}
 			
-			b=new BIG(0);
+			b=BIG.createFast();
 			for (int i=0;i<BIG.NLEN;i++ )
 				b.w[i]=d.w[BIG.NLEN+i];
 			b.norm();
@@ -110,10 +117,6 @@ public final class FP {
 			b.norm();
 			return b;		
 		}
-		if (MODTYPE==NOT_SPECIAL)
-		{
-			return BIG.monty(new BIG(ROM.Modulus),ROM.MConst,d);
-		}
 
 		return new BIG(0);
 	}
@@ -124,16 +127,20 @@ public final class FP {
 
 
 /* Constructors */
+	public static FP createFast()
+	{
+		return new FP();
+	}
+	
+	private FP()
+	{
+		x = BIG.createFast();
+	}
+
 	public FP(int a)
 	{
 		x=new BIG(a);
 		nres();
-	}
-
-	public FP()
-	{
-		x=new BIG(0);
-		XES=1;
 	}
 
 	public FP(BIG a)
@@ -148,7 +155,7 @@ public final class FP {
 		XES=a.XES;
 	}
 
-/* convert to string */
+	/* convert to string */
 	public String toString() 
 	{
 		String s=redc().toString();
@@ -166,8 +173,12 @@ public final class FP {
 	{
 		if (MODTYPE!=PSEUDO_MERSENNE && MODTYPE!=GENERALISED_MERSENNE)
 		{
-			DBIG d=BIG.mul(x,new BIG(ROM.R2modp));  /*** Change ***/
-			x.copy(mod(d));
+			if (x.iszilch() == false)
+			{
+				DBIG d=BIG.mul(x,new BIG(ROM.R2modp));  /*** Change ***/
+				x.copy(mod(d));
+			}
+			
 			XES=2;
 		}
 		else XES=1;
@@ -246,8 +257,12 @@ public final class FP {
 	{
 		if ((long)XES*b.XES>(long)FEXCESS) reduce();
 
-		DBIG d=BIG.mul(x,b.x);
-		x.copy(mod(d));
+		if (x.iszilch() == false && b.x.iszilch() == false)
+		{
+			DBIG d=BIG.mul(x,b.x);
+			x.copy(mod(d));
+		}
+
 		XES=2;
 	}
 
@@ -373,7 +388,7 @@ public final class FP {
 			x.fshr(1);
 		else
 		{
-			x.add(new BIG(ROM.Modulus));
+			x.add(BIG.BIGROMMOD);
 			x.norm();
 			x.fshr(1);
 		}
@@ -397,6 +412,9 @@ public final class FP {
 /* return TRUE if this==a */
 	public boolean equals(FP a)
 	{
+		if (BIG.comp(this.x, a.x) == 0)
+			return true;
+		
 		FP f=new FP(this);
 		FP s=new FP(a);
 		f.reduce();
@@ -408,7 +426,7 @@ public final class FP {
 /* reduce this mod Modulus */
 	public void reduce()
 	{
-		x.mod(new BIG(ROM.Modulus));
+		x.mod(BIG.BIGROMMOD);
 		XES=1;
 	}
 
@@ -428,7 +446,7 @@ public final class FP {
 			w[i]=(byte)lsbs;
 			t.fshr(4);
 		}
-		tb[0]=new FP(1);
+		tb[0]=new FP(ONE);
 		tb[1]=new FP(this);
 		for (int i=2;i<16;i++)
 		{
@@ -496,7 +514,7 @@ public final class FP {
 	public int jacobi()
 	{
 		BIG w=redc();
-		return w.jacobi(new BIG(ROM.Modulus));
+		return w.jacobi(BIG.BIGROMMOD);
 	}
 /*
 	public static void main(String[] args) {

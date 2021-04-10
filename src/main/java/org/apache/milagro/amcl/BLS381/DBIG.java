@@ -54,7 +54,7 @@ public class DBIG {
 /* split DBIG at position n, return higher half, keep lower half */
 	public BIG split(int n)
 	{
-		BIG t=new BIG(0);
+		BIG t=BIG.createFast();
 		int m=n%BIG.BASEBITS;
 		long nw,carry=w[BIG.DNLEN-1]<<(BIG.BASEBITS-m);
 
@@ -111,6 +111,14 @@ public class DBIG {
 	}
 
 /* Constructors */
+	public static DBIG createFast()
+	{
+		return new DBIG();
+	}
+	
+	private DBIG()
+	{ }
+
 	public DBIG(int x)
 	{
 		w[0]=x;
@@ -120,8 +128,13 @@ public class DBIG {
 
 	public DBIG(DBIG x)
 	{
-		for (int i=0;i<BIG.DNLEN;i++)
-			w[i]=x.w[i];
+		w[0]=x.w[0]; w[1]=x.w[1];
+		w[2]=x.w[2]; w[3]=x.w[3];
+		w[4]=x.w[4]; w[5]=x.w[5];
+		w[6]=x.w[6]; w[7]=x.w[7];
+		w[8]=x.w[8]; w[9]=x.w[9];
+		w[10]=x.w[10]; w[11]=x.w[11];
+		w[12]=x.w[12]; w[13]=x.w[13];
 	}
 
 	public DBIG(BIG x)
@@ -138,8 +151,13 @@ public class DBIG {
 /* Copy from another DBIG */
 	public void copy(DBIG x)
 	{
-		for (int i=0;i<BIG.DNLEN;i++)
-			w[i]=x.w[i];
+		w[0]=x.w[0]; w[1]=x.w[1];
+		w[2]=x.w[2]; w[3]=x.w[3];
+		w[4]=x.w[4]; w[5]=x.w[5];
+		w[6]=x.w[6]; w[7]=x.w[7];
+		w[8]=x.w[8]; w[9]=x.w[9];
+		w[10]=x.w[10]; w[11]=x.w[11];
+		w[12]=x.w[12]; w[13]=x.w[13];
 	}
 
 /* Copy into upper part */
@@ -215,7 +233,7 @@ public class DBIG {
 		int k=0;  
 		norm();
 		DBIG m=new DBIG(c);
-		DBIG r=new DBIG(0);
+		DBIG r=DBIG.createFast();
 
 		if (comp(this,m)<0) return new BIG(this);
 		
@@ -245,9 +263,9 @@ public class DBIG {
 	{
 		int d,k=0;
 		DBIG m=new DBIG(c);
-		DBIG dr=new DBIG(0);
-		BIG r=new BIG(0);
-		BIG a=new BIG(0);
+		DBIG dr=DBIG.createFast();
+		BIG r=BIG.createFast();
+		BIG a=BIG.createFast();
 		BIG e=new BIG(1);
 		norm();
 

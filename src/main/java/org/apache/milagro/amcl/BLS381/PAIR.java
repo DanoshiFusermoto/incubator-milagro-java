@@ -77,11 +77,11 @@ public final class PAIR {
 			if (ECP.SEXTIC_TWIST==ECP.D_TYPE)
 			{			
 				b=new FP4(XX);             // L(0,1) | L(0,0) | L(1,0)
-				c=new FP4(0);
+				c=FP4.ZERO;
 			}
 			if (ECP.SEXTIC_TWIST==ECP.M_TYPE)
 			{
-				b=new FP4(0);
+				b=FP4.ZERO;
 				c=new FP4(XX); c.times_i();
 			}
 			A.dbl();
@@ -120,11 +120,11 @@ public final class PAIR {
 			if (ECP.SEXTIC_TWIST==ECP.D_TYPE)
 			{
 				b=new FP4(Y1);
-				c=new FP4(0);
+				c=FP4.ZERO;
 			}
 			if (ECP.SEXTIC_TWIST==ECP.M_TYPE)
 			{
-				b=new FP4(0);
+				b=FP4.ZERO;
 				c=new FP4(Y1); c.times_i();
 			}
 			A.add(B);
@@ -139,7 +139,7 @@ public final class PAIR {
 		FP2 f;
 		BIG x=new BIG(ROM.CURVE_Bnx);
 		BIG n=new BIG(x);
-		ECP2 K=new ECP2();
+		ECP2 K;
 		FP12 lv;
 		int bt;
 
@@ -177,12 +177,9 @@ public final class PAIR {
 		FP Qx=new FP(Q.getx());
 		FP Qy=new FP(Q.gety());
 
-		ECP2 A=new ECP2();
+		ECP2 A=new ECP2(P);
 		FP12 r=new FP12(1);
-		A.copy(P);
-
-		ECP2 MP=new ECP2();
-		MP.copy(P); MP.neg();
+		ECP2 MP=new ECP2(P); MP.neg();
 
 		int nb=n3.nbits();
 
@@ -238,7 +235,7 @@ public final class PAIR {
 		FP2 f;
 		BIG x=new BIG(ROM.CURVE_Bnx);
 		BIG n=new BIG(x);
-		ECP2 K=new ECP2();
+		ECP2 K;
 		FP12 lv;
 		int bt;
 
@@ -283,17 +280,12 @@ public final class PAIR {
 		FP Sx=new FP(S.getx());
 		FP Sy=new FP(S.gety());
 
-		ECP2 A=new ECP2();
-		ECP2 B=new ECP2();
+		ECP2 A=new ECP2(P);
+		ECP2 B=new ECP2(R);
 		FP12 r=new FP12(1);
 
-		A.copy(P);
-		B.copy(R);
-
-		ECP2 MP=new ECP2();
-		MP.copy(P); MP.neg();
-		ECP2 MR=new ECP2();
-		MR.copy(R); MR.neg();
+		ECP2 MP=new ECP2(P); MP.neg();
+		ECP2 MR=new ECP2(R); MR.neg();
 
 
 		int nb=n3.nbits();
@@ -600,19 +592,18 @@ public final class PAIR {
 		if (USE_GLV)
 		{
 			//P.affine();
-			R=new ECP();
-			R.copy(P);
+			R=new ECP(P);
 			int i,np,nn;
-			ECP Q=new ECP();
-			Q.copy(P); Q.affine();
+			ECP Q=new ECP(P);
+			Q.affine();
 			BIG q=new BIG(ROM.CURVE_Order);
 			FP cru=new FP(new BIG(ROM.CURVE_Cru));
-			BIG t=new BIG(0);
+			BIG t;
 			BIG[] u=glv(e);
 			Q.getx().mul(cru);
 
 			np=u[0].nbits();
-			t.copy(BIG.modneg(u[0],q));
+			t=new BIG(BIG.modneg(u[0],q));
 			nn=t.nbits();
 			if (nn<np)
 			{
@@ -658,14 +649,14 @@ public final class PAIR {
 			BIG q=new BIG(ROM.CURVE_Order);
 			BIG[] u=gs(e);
 
-			BIG t=new BIG(0);
+			BIG t=BIG.createFast();
 			int i,np,nn;
 			//P.affine();
 
-			Q[0]=new ECP2(); Q[0].copy(P);
+			Q[0]=new ECP2(P);
 			for (i=1;i<4;i++)
 			{
-				Q[i]=new ECP2(); Q[i].copy(Q[i-1]);
+				Q[i]=new ECP2(Q[i-1]);
 				Q[i].frob(f);
 			}
 			for (i=0;i<4;i++)
@@ -701,7 +692,7 @@ public final class PAIR {
 			FP12[] g=new FP12[4];
 			FP2 f=new FP2(new BIG(ROM.Fra),new BIG(ROM.Frb));
 			BIG q=new BIG(ROM.CURVE_Order);
-			BIG t=new BIG(0);
+			BIG t=BIG.createFast();
 			int i,np,nn;
 			BIG[] u=gs(e);
 

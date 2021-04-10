@@ -23,7 +23,11 @@ under the License.
 
 package org.apache.milagro.amcl.BLS381;
 
-public final class FP4 {
+public final class FP4 
+{
+	static final FP4 ZERO = new FP4(0);
+	static final FP4 ONE = new FP4(1);
+	
 	private final FP2 a;
 	private final FP2 b;
 /* reduce all components of this mod Modulus */
@@ -51,9 +55,9 @@ public final class FP4 {
 	}
 
 /* test this==1 ? */
-	public boolean isunity() {
-		FP2 one=new FP2(1);
-		return (a.equals(one) && b.iszilch());
+	public boolean isunity() 
+	{
+		return (a.equals(FP2.ONE) && b.iszilch());
 	}
 
 /* test is w real? That is in a+ib test b is zero */
@@ -82,6 +86,17 @@ public final class FP4 {
 		return (a.equals(x.a) && b.equals(x.b));
 	}
 /* constructors */
+	public static FP4 createFast()
+	{
+		return new FP4();
+	}
+	
+	private FP4()
+	{
+		a = FP2.createFast();
+		b = FP2.createFast();
+	}
+
 	public FP4(int c)
 	{
 		a=new FP2(c);
@@ -105,7 +120,8 @@ public final class FP4 {
 		a=new FP2(c);
 		b=new FP2(0);
 	}
-/* copy this=x */
+
+	/* copy this=x */
 	public void copy(FP4 x)
 	{
 		a.copy(x.a);
@@ -128,12 +144,12 @@ public final class FP4 {
 	{
 		norm();
 		FP2 m=new FP2(a);
-		FP2 t=new FP2(0);
+		FP2 t;
 		m.add(b);
 //	m.norm();
 		m.neg();
 	//	m.norm();
-		t.copy(m); t.add(b);
+		t=new FP2(m); t.add(b);
 		b.copy(m);
 		b.add(a);
 		a.copy(t);
@@ -414,13 +430,13 @@ public final class FP4 {
 		a.norm(); b.norm();
 		BIG e=new BIG(a);
 		BIG d=new BIG(b);
-		BIG w=new BIG(0);
+		BIG w=BIG.createFast();
 
 		FP4 cu=new FP4(ck);  // can probably be passed in w/o copying
 		FP4 cv=new FP4(this);
 		FP4 cumv=new FP4(ckml);
 		FP4 cum2v=new FP4(ckm2l);
-		FP4 r=new FP4(0);
+		FP4 r=FP4.createFast();
 		FP4 t=new FP4(0);
 
 		int f2=0;
