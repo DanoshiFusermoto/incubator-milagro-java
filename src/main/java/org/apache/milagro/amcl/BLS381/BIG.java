@@ -110,12 +110,15 @@ public class BIG {
 	public void cmove(BIG g,int d)
 	{
 		int i;
-		long t,b=-d;
+		long b=-d;
 
-		for (i=0;i<NLEN;i++)
-		{
-			w[i]^=(w[i]^g.w[i])&b;
-		}
+		w[0]^=(w[0]^g.w[0])&b;
+		w[1]^=(w[1]^g.w[1])&b;
+		w[2]^=(w[2]^g.w[2])&b;
+		w[3]^=(w[3]^g.w[3])&b;
+		w[4]^=(w[4]^g.w[4])&b;
+		w[5]^=(w[5]^g.w[5])&b;
+		w[6]^=(w[6]^g.w[6])&b;
 	}
 
     public static long cast_to_chunk(int x)
@@ -222,6 +225,24 @@ public class BIG {
 		cr[0]=top+x1+(bot>>BASEBITS);
 		cr[1]=(bot&BMASK);
 	}
+	
+	public static long muladd(long a, long b, long c, long[] r, int o)
+	{
+		long x0,x1,y0,y1;
+		x0=a&HMASK;
+		x1=(a>>HBITS);
+		y0=b&HMASK;
+		y1=(b>>HBITS);
+		long bot=x0*y0;
+		long top=x1*y1;
+		long mid=x0*y1+x1*y0;
+		x0=mid&HMASK;
+		x1=(mid>>HBITS);
+		bot+=x0<<HBITS; bot+= (c+r[o]);
+		r[o] = (bot&BMASK);
+		return top+x1+(bot>>BASEBITS);
+	}
+
 
 /* this*=x, where x is >NEXCESS */
 	public long pmul(int c)
@@ -293,20 +314,13 @@ public class BIG {
 	public static DBIG mul(BIG a,BIG b)
 	{
 		DBIG c=DBIG.createFast();
-		int o = 0;
-		long[] cr=new long[] {0, 0};
-
+		long carry;
 		for (int i=0;i<NLEN;i++)
 		{
-			cr[0]=0;
-			o = i;
-			for (int j=0;j<NLEN;j++)
-			{
-				muladd(a.w[i],b.w[j],cr[0],c.w[o],cr);
-				c.w[o]=cr[1];
-				o++;
-			}
-			c.w[NLEN+i]=cr[0];
+			carry=muladd(a.w[i],b.w[0],0,c.w,i);
+			for (int j=1;j<NLEN;j++)
+				carry=muladd(a.w[i],b.w[j],carry,c.w,i+j);
+			c.w[NLEN+i]=carry;
 		}
 
 		return c;
@@ -317,20 +331,18 @@ public class BIG {
 	public static DBIG sqr(BIG a)
 	{
 		DBIG c=DBIG.createFast();
-		long[] cr=new long[] {0, 0};
 
+		long carry = 0;
 		for (int i=0;i<NLEN;i++)
 		{
-			cr[0]=0;
+			carry=0;
 			for (int j=i+1;j<NLEN;j++)
-			{
-				muladd(2*a.w[i],a.w[j],cr[0],c.w[i+j],cr);
-				c.w[i+j]=cr[1];
-			}
-			c.w[NLEN+i]=cr[0];
+				carry = muladd(2*a.w[i],a.w[j],carry,c.w, i+j);
+			c.w[NLEN+i]=carry;
 		}
 		
 		int i2 = 0;
+		long[] cr=new long[] {0, 0};
 		for (int i=0;i<NLEN;i++)
 		{
 			muladd(a.w[i],a.w[i],0,c.w[i2],cr);
@@ -346,7 +358,7 @@ public class BIG {
 	{
 		BIG b;
 		long m;
-		long[] cr=new long[]{0,0};
+		long carry = 0;
 		for (int i=0;i<NLEN;i++) 
 		{
 			// These conditions rarely happen, not worth the if expense
@@ -362,20 +374,17 @@ public class BIG {
 				
 			m=(MC*d.w[i])&BMASK;
 
-			cr[0]=0;
-			int o = i;
-			for (int j=0;j<NLEN;j++)
-			{
-				muladd(m,md.w[j],cr[0],d.w[o],cr);
-				d.w[o]=cr[1];
-				o++;
-			}
-			d.w[NLEN+i]+=cr[0];
+			carry=muladd(m,md.w[0],0,d.w,i);
+			for (int j=1;j<NLEN;j++)
+				carry=muladd(m,md.w[j],carry,d.w,(i+j));
+			d.w[NLEN+i]+=carry;
 		}
 
 		b=BIG.createFast();
-		for (int i=0;i<NLEN;i++ )
-			b.w[i]=d.w[NLEN+i];
+		b.w[0]=d.w[7]; b.w[1]=d.w[8];
+		b.w[2]=d.w[9]; b.w[3]=d.w[10];
+		b.w[4]=d.w[11];b.w[5]=d.w[12];
+		b.w[6]=d.w[13];
 		b.norm();
 		return b;		
 	}
@@ -466,8 +475,10 @@ public class BIG {
 
 	public void copy(DBIG x)
 	{
-		for (int i=0;i<NLEN;i++)
-			w[i]=x.w[i];
+		w[0]=x.w[0]; w[1]=x.w[1];
+		w[2]=x.w[2]; w[3]=x.w[3];
+		w[4]=x.w[4]; w[5]=x.w[5];
+		w[6]=x.w[6];
 	}
 
 /* general shift right */
@@ -495,23 +506,35 @@ public class BIG {
 	}
 
 /* return this+x */
-	public BIG plus(BIG x) {
+	public BIG plus(BIG x) 
+	{
 		BIG s=BIG.createFast();
-		for (int i=0;i<NLEN;i++)
-			s.w[i]=w[i]+x.w[i];
+		s.w[0]=w[0]+x.w[0];
+		s.w[1]=w[1]+x.w[1];
+		s.w[2]=w[2]+x.w[2];
+		s.w[3]=w[3]+x.w[3];
+		s.w[4]=w[4]+x.w[4];
+		s.w[5]=w[5]+x.w[5];
+		s.w[6]=w[6]+x.w[6];
 		return s;
 	}
 
 /* this+=x */
-	public void add(BIG x) {
-		for (int i=0;i<NLEN;i++)
-			w[i]+=x.w[i];
+	public void add(BIG x) 
+	{
+		w[0]+=x.w[0]; w[1]+=x.w[1];
+		w[2]+=x.w[2]; w[3]+=x.w[3];
+		w[4]+=x.w[4]; w[5]+=x.w[5];
+		w[6]+=x.w[6];
 	}
 
 /* this|=x */
-	public void or(BIG x) {
-		for (int i=0;i<NLEN;i++)
-			w[i]|=x.w[i];
+	public void or(BIG x) 
+	{
+		w[0]|=x.w[0]; w[1]|=x.w[1];
+		w[2]|=x.w[2]; w[3]|=x.w[3];
+		w[4]|=x.w[4]; w[5]|=x.w[5];
+		w[6]|=x.w[6];
 	}
 
 
@@ -530,21 +553,35 @@ public class BIG {
 /* return this.x */
 	public BIG minus(BIG x) {
 		BIG d=BIG.createFast();
-		for (int i=0;i<NLEN;i++)
-			d.w[i]=w[i]-x.w[i];
+		d.w[0]=w[0]-x.w[0];
+		d.w[1]=w[1]-x.w[1];
+		d.w[2]=w[2]-x.w[2];
+		d.w[3]=w[3]-x.w[3];
+		d.w[4]=w[4]-x.w[4];
+		d.w[5]=w[5]-x.w[5];
+		d.w[6]=w[6]-x.w[6];
 		return d;
 	}
 
 /* this-=x */
-	public void sub(BIG x) {
-		for (int i=0;i<NLEN;i++)
-			w[i]-=x.w[i];
+	public void sub(BIG x) 
+	{
+		w[0]-=x.w[0]; w[1]-=x.w[1];
+		w[2]-=x.w[2]; w[3]-=x.w[3];
+		w[4]-=x.w[4]; w[5]-=x.w[5];
+		w[6]-=x.w[6];
 	}
 
 /* reverse subtract this=x-this */
-	public void rsub(BIG x) {
-		for (int i=0;i<NLEN;i++)
-			w[i]=x.w[i]-w[i];
+	public void rsub(BIG x) 
+	{
+		w[0]=x.w[0]-w[0];
+		w[1]=x.w[1]-w[1];
+		w[2]=x.w[2]-w[2];
+		w[3]=x.w[3]-w[3];
+		w[4]=x.w[4]-w[4];
+		w[5]=x.w[5]-w[5];
+		w[6]=x.w[6]-w[6];
 	}
 
 /* this-=x where x is int */
@@ -556,7 +593,10 @@ public class BIG {
 /* this*=x, where x is small int<NEXCESS */
 	public void imul(int c)
 	{
-		for (int i=0;i<NLEN;i++) w[i]*=c;
+		w[0]*=c; w[1]*=c;
+		w[2]*=c; w[3]*=c;
+		w[4]*=c; w[5]*=c;
+		w[6]*=c;
 	}
 
 /* convert this BIG to byte array */
