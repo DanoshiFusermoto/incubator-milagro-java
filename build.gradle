@@ -1,6 +1,6 @@
 buildscript {
     repositories {
-        jcenter()
+        mavenCentral()
     }
     dependencies {
         classpath 'com.bmuschko:gradle-nexus-plugin:2.3.1'
@@ -11,16 +11,11 @@ plugins {
     id 'java-library'
     id 'jacoco'
     id 'com.github.kt3k.coveralls' version '2.6.3'
-    id 'io.codearte.nexus-staging' version '0.11.0'
 }
 
 apply plugin: 'java'
 apply plugin: 'maven-publish'
-apply plugin: 'com.bmuschko.nexus'
 
-nexusStaging {
-    packageGroup = "org.miracl"
-}
 
 publishing {
     publications {
@@ -57,48 +52,8 @@ repositories {
     jcenter()
 }
 
-jacocoTestReport {
-    reports {
-        xml.enabled = true
-        html.enabled = true
-    }
-}
+
 
 archivesBaseName = 'milagro-crypto-java'
 group = "org.miracl.milagro.amcl"
 version = "0.4.0"
-modifyPom {
-    project {
-        name 'milagro-crypto-java'
-        description 'MCJL - Milagro Crypto Java Library'
-        url 'https://github.com/milagro-crypto/milagro-crypto-java'
-        inceptionYear '2018'
-        scm {
-            url 'https://bitbucket.org/objdict/objjson'
-            connection 'scm:https://github.com/milagro-crypto/milagro-crypto-java.git'
-            developerConnection 'scm:git://github.com/milagro-crypto/milagro-crypto-java.git'
-        }
-        licenses {
-            license {
-                name 'The Apache Software License, Version 2.0'
-                url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-                distribution 'repo'
-            }
-        }
-        developers {
-            developer {
-                email 'support@miracl.com'
-            }
-        }
-    }
-}
-extraArchive {
-    sources = true
-    tests = true
-    javadoc = true
-}
-nexus {
-    sign = true
-    repositoryUrl = 'https://oss.sonatype.org/service/local/staging/deploy/maven2/'
-    snapshotRepositoryUrl = 'https://oss.sonatype.org/content/repositories/snapshots/'
-}
